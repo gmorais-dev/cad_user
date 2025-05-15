@@ -11,7 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CriarUsuario cria um novo usuário
 func CriarUsuario(c *gin.Context) {
 	var dto dtos.UsuarioRequest
 	if err := c.ShouldBindJSON(&dto); err != nil {
@@ -28,7 +27,6 @@ func CriarUsuario(c *gin.Context) {
 	c.JSON(http.StatusCreated, mappers.MapUsuarioResponse(usuario))
 }
 
-// ListarUsuarios retorna todos os usuários com paginação
 func ListarUsuarios(c *gin.Context) {
 	limitStr := c.DefaultQuery("limit", "10")
 	offsetStr := c.DefaultQuery("offset", "0")
@@ -56,7 +54,6 @@ func ListarUsuarios(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// BuscarUsuarioPorID retorna um usuário por ID
 func BuscarUsuarioPorID(c *gin.Context) {
 	id, err := parseIDParam(c)
 	if err != nil {
