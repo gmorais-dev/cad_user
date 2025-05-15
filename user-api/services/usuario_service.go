@@ -10,9 +10,23 @@ import (
 	"gorm.io/gorm"
 )
 
+// hashPassword gera o hash da senha com bcrypt
 func hashPassword(senha string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(senha), bcrypt.DefaultCost)
 	return string(bytes), err
+}
+
+func checkEmailDuplicado(email string, ignoreID uint64) (bool, error) {
+	var usuario models.Usuario
+	query := config.DB.Where("email = ?", email)
+	if ignoreID != 0 {
+		query = query.Where("id != ?", ignoreID)
+	}
+	err := query.First(&usuario).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 func AtualizarUsuario(id uint64, dto dtos.UsuarioRequest) (*models.Usuario, error) {
@@ -25,11 +39,12 @@ func AtualizarUsuario(id uint64, dto dtos.UsuarioRequest) (*models.Usuario, erro
 		return nil, err
 	}
 
-	if usuario.Email != dto.Email {
-		var outro models.Usuario
-		if err := config.DB.Where("email = ?", dto.Email).First(&outro).Error; err == nil {
-			return nil, errors.New("email já cadastrado")
-		}
+	duplicado, err := checkEmailDuplicado(dto.Email, id)
+	if err != nil {
+		return nil, err
+	}
+	if duplicado {
+		return nil, errors.New("email já cadastrado")
 	}
 
 	usuario.Nome = dto.Nome
@@ -51,8 +66,12 @@ func AtualizarUsuario(id uint64, dto dtos.UsuarioRequest) (*models.Usuario, erro
 }
 
 func CriarUsuario(dto dtos.UsuarioRequest) (*models.Usuario, error) {
-	var usuarioExistente models.Usuario
-	if err := config.DB.Where("email = ?", dto.Email).First(&usuarioExistente).Error; err == nil {
+
+	duplicado, err := checkEmailDuplicado(dto.Email, 0)
+	if err != nil {
+		return nil, err
+	}
+	if duplicado {
 		return nil, errors.New("email já cadastrado")
 	}
 
@@ -81,6 +100,7 @@ func ListarUsuarios(limit, offset int) ([]models.Usuario, error) {
 	}
 	return usuarios, nil
 }
+
 func BuscarUsuarioPorID(id uint64) (*models.Usuario, error) {
 	var usuario models.Usuario
 	if err := config.DB.First(&usuario, id).Error; err != nil {
@@ -93,7 +113,15 @@ func BuscarUsuarioPorID(id uint64) (*models.Usuario, error) {
 }
 
 func DeletarUsuario(id uint64) error {
-	if err := config.DB.Delete(&models.Usuario{}, id).Error; err != nil {
+	var usuario models.Usuario
+	if err := config.DB.First(&usuario, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("usuário não encontrado")
+		}
+		return err
+	}
+
+	if err := config.DB.Delete(&usuario).Error; err != nil {
 		return err
 	}
 	return nil
