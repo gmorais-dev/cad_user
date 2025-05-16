@@ -1,12 +1,10 @@
 package controllers
 
 import (
-	"net/http"
-
 	"auth-service/dtos"
-	"auth-service/models"
 	"auth-service/services"
 	"auth-service/utils"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,51 +14,53 @@ type AuthController struct {
 }
 
 func NewAuthController(authService *services.AuthService) *AuthController {
-	return &AuthController{
-		authService: authService,
-	}
+	return &AuthController{authService: authService}
 }
 
-func (ctrl *AuthController) Register(c *gin.Context) {
+func (c *AuthController) Register(ctx *gin.Context) {
 	var dto dtos.RegisterDTO
-
-	if err := c.ShouldBindJSON(&dto); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&dto); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	user := models.User{
-		Username: dto.Username,
-		Email:    dto.Email,
-		Password: dto.Password,
-	}
-
-	if err := ctrl.authService.Register(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	user, err := c.authService.Register(&dto)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "user registered successfully"})
+	ctx.JSON(http.StatusCreated, gin.H{
+		"message": "usuário registrado com sucesso",
+		"user_id": user.ID,
+	})
 }
 
-func (ctrl *AuthController) Login(c *gin.Context) {
+func (c *AuthController) Login(ctx *gin.Context) {
 	var dto dtos.LoginDTO
-	if err := c.ShouldBindJSON(&dto); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&dto); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	user, err := ctrl.authService.Login(dto.Email, dto.Password)
+	user, err := c.authService.Login(dto.Email, dto.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
 	token, err := utils.GenerateToken(user.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not generate token"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "erro ao gerar token"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	ctx.JSON(http.StatusOK, gin.H{
+		"token": token,
+		"user": gin.H{
+			"id":       user.ID,
+			"username": user.Username,
+			"email":    user.Email,
+		},
+	})
 }

@@ -7,6 +7,7 @@ import (
 	"auth-service/utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func AuthMiddleware() gin.HandlerFunc {
@@ -26,7 +27,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		claims := token.Claims.(map[string]interface{})
+		claims := token.Claims.(jwt.MapClaims)
 		c.Set("userID", claims["user_id"])
 
 		c.Next()

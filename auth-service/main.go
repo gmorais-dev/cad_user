@@ -1,19 +1,39 @@
 package main
 
 import (
+	"log"
+
 	"auth-service/config"
+	"auth-service/controllers"
+	"auth-service/services"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	r := gin.Default()
+	// Conecta ao banco de dados
+	err := config.ConnectDatabase()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	config.ConnectDatabase()
+	// Pega a instância do DB já conectada
+	db := config.DB
 
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "API rodando com sucesso!"})
-	})
+	// Inicializa serviços
+	authService := services.NewAuthService(db)
+	authController := controllers.NewAuthController(authService)
 
-	r.Run() // por padrão, roda na porta :8080
+	// Configuração do router
+	router := gin.Default()
+
+	// Rotas de autenticação
+	authRoutes := router.Group("/auth")
+	{
+		authRoutes.POST("/register", authController.Register)
+		authRoutes.POST("/login", authController.Login)
+	}
+
+	// Inicia o servidor na porta 8080
+	router.Run(":8080")
 }

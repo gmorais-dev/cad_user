@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"auth-service/config" // import para pegar o DB
 	"auth-service/controllers"
 	"auth-service/middlewares"
 	"auth-service/services"
@@ -11,7 +12,7 @@ import (
 func SetupRouter() *gin.Engine {
 	r := gin.Default()
 
-	authService := services.NewAuthService()
+	authService := services.NewAuthService(config.DB) // <-- aqui passa o DB
 	authController := controllers.NewAuthController(authService)
 
 	auth := r.Group("/auth")

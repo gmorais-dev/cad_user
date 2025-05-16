@@ -1,52 +1,57 @@
 package services
 
 import (
+	"auth-service/dtos"
+	"auth-service/models"
+	"auth-service/utils"
 	"errors"
 
-	"auth-service/config"
-
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type AuthService struct {
-	DB *gorm.DB
+	db *gorm.DB
 }
 
-func NewAuthService() *AuthService {
-	return &AuthService{
-		DB: config.DB,
-	}
+func NewAuthService(db *gorm.DB) *AuthService {
+	return &AuthService{db: db}
 }
 
-func (s *AuthService) Register(user *models.User) error {
-	// Verifica se email já existe
+func (s *AuthService) Register(dto *dtos.RegisterDTO) (*models.User, error) {
+	// Verificar se usuário já existe
 	var existingUser models.User
-	if err := s.DB.Where("email = ?", user.Email).First(&existingUser).Error; err == nil {
-		return errors.New("email already registered")
+	if err := s.db.Where("email = ?", dto.Email).First(&existingUser).Error; err == nil {
+		return nil, errors.New("email já está em uso")
 	}
 
-	// Hash da senha
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	// Criar hash da senha
+	hashedPassword, err := utils.HashPassword(dto.Password)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	user.Password = string(hashedPassword)
+	// Criar novo usuário
+	user := models.User{
+		Username: dto.Username,
+		Email:    dto.Email,
+		Password: hashedPassword,
+	}
 
-	// Salvar no banco
-	return s.DB.Create(user).Error
+	if err := s.db.Create(&user).Error; err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 func (s *AuthService) Login(email, password string) (*models.User, error) {
 	var user models.User
-	if err := s.DB.Where("email = ?", email).First(&user).Error; err != nil {
-		return nil, errors.New("invalid credentials")
+	if err := s.db.Where("email = ?", email).First(&user).Error; err != nil {
+		return nil, errors.New("credenciais inválidas")
 	}
 
-	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
-	if err != nil {
-		return nil, errors.New("invalid credentials")
+	if !utils.CheckPasswordHash(password, user.Password) {
+		return nil, errors.New("credenciais inválidas")
 	}
 
 	return &user, nil
