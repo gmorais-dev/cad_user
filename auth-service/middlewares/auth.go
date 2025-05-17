@@ -13,7 +13,7 @@ import (
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "authorization header required"})
 			c.Abort()
 			return
@@ -27,9 +27,21 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		claims := token.Claims.(jwt.MapClaims)
-		c.Set("userID", claims["user_id"])
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
+			c.Abort()
+			return
+		}
 
+		userID, ok := claims["user_id"].(float64) // JWT armazena como float64
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "user_id not found in token"})
+			c.Abort()
+			return
+		}
+
+		c.Set("userID", uint(userID))
 		c.Next()
 	}
 }

@@ -3,9 +3,9 @@ package services
 import (
 	"auth-service/dtos"
 	"auth-service/models"
-	"auth-service/utils"
 	"errors"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -17,24 +17,25 @@ func NewAuthService(db *gorm.DB) *AuthService {
 	return &AuthService{db: db}
 }
 
+// Registro de usuário
 func (s *AuthService) Register(dto *dtos.RegisterDTO) (*models.User, error) {
-	// Verificar se usuário já existe
-	var existingUser models.User
-	if err := s.db.Where("email = ?", dto.Email).First(&existingUser).Error; err == nil {
+	// Verifica se e-mail já está em uso
+	var existing models.User
+	if err := s.db.Where("email = ?", dto.Email).First(&existing).Error; err == nil {
 		return nil, errors.New("email já está em uso")
 	}
 
-	// Criar hash da senha
-	hashedPassword, err := utils.HashPassword(dto.Password)
+	// Criptografa a senha
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(dto.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("erro ao criptografar senha")
 	}
 
-	// Criar novo usuário
+	// Cria o usuário
 	user := models.User{
 		Username: dto.Username,
 		Email:    dto.Email,
-		Password: hashedPassword,
+		Password: string(hashedPassword),
 	}
 
 	if err := s.db.Create(&user).Error; err != nil {
@@ -44,14 +45,16 @@ func (s *AuthService) Register(dto *dtos.RegisterDTO) (*models.User, error) {
 	return &user, nil
 }
 
+// Login de usuário
 func (s *AuthService) Login(email, password string) (*models.User, error) {
 	var user models.User
 	if err := s.db.Where("email = ?", email).First(&user).Error; err != nil {
-		return nil, errors.New("credenciais inválidas")
+		return nil, errors.New("usuário não encontrado")
 	}
 
-	if !utils.CheckPasswordHash(password, user.Password) {
-		return nil, errors.New("credenciais inválidas")
+	// Compara senha
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		return nil, errors.New("senha incorreta")
 	}
 
 	return &user, nil

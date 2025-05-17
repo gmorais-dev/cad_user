@@ -64,3 +64,16 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		},
 	})
 }
+
+func ProtectedRoute(c *gin.Context) {
+	userID, ok := c.Get("userID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "usuário não autenticado"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Acesso autorizado!",
+		"userID":  userID,
+	})
+}

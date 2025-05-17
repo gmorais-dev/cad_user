@@ -16,7 +16,7 @@ func ConnectDatabase() error {
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
 		getEnv("DB_HOST", "localhost"),
 		getEnv("DB_USER", "postgres"),
-		getEnv("DB_PASSWORD", "postgres"),
+		getEnv("DB_PASSWORD", "1234"),
 		getEnv("DB_NAME", "auth_db"),
 		getEnv("DB_PORT", "5432"),
 	)
