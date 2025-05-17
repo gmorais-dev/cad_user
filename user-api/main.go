@@ -14,6 +14,7 @@ func main() {
 	config.DB.AutoMigrate(&models.Usuario{})
 
 	r := gin.Default()
+	r.SetTrustedProxies([]string{"127.0.0.1"})
 
 	r.POST("/usuarios", controllers.CriarUsuario)
 	r.GET("/usuarios", controllers.ListarUsuarios)
@@ -21,5 +22,5 @@ func main() {
 	r.PUT("/usuarios/:id", controllers.AtualizarUsuario)
 	r.DELETE("/usuarios/:id", controllers.DeletarUsuario)
 
-	r.Run(":8080")
+	r.Run(":8082")
 }

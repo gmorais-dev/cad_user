@@ -31,6 +31,7 @@ func main() {
 	authController := controllers.NewAuthController(authService)
 
 	router := gin.Default()
+	router.SetTrustedProxies([]string{"127.0.0.1"})
 
 	authRoutes := router.Group("/auth")
 	{
@@ -38,5 +39,5 @@ func main() {
 		authRoutes.POST("/login", authController.Login)
 	}
 
-	router.Run(":8080")
+	router.Run(":8081")
 }
